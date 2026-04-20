@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}MindSpace — Login{% endblock %}
+{% block body %}
+<div class="auth-root">
+  <!-- LEFT -->
+  <div class="auth-left">
+    <div class="auth-left-inner">
+      <div class="brand-mark">
+        <span class="brain-icon">🧠</span>
+        <span class="brand-name">MindSpace</span>
+      </div>
+      <div class="hero-content">
+        <h1 class="hero-headline">Understand Your Mind.<br><em>Take Control.</em></h1>
+        <p class="hero-sub">An AI-powered mental wellness platform designed for students — tracking mood, stress, sleep, and more in one private, compassionate space.</p>
+        <div class="hero-stats">
+          <div class="stat"><span class="stat-num">20</span><span class="stat-label">Clinically inspired questions</span></div>
+          <div class="stat-div"></div>
+          <div class="stat"><span class="stat-num">10</span><span class="stat-label">Wellness features</span></div>
+          <div class="stat-div"></div>
+          <div class="stat"><span class="stat-num">AI</span><span class="stat-label">Powered insights</span></div>
+        </div>
+        <div class="hero-feature-list">
+          {% for f in ['📅 Daily check-in & streak tracking','🧠 ML-powered risk assessment','📓 Private journaling with prompts','🎯 Goal setting & habit tracking','🧘 Guided meditation exercises','🤖 Aria — AI companion chatbot','📅 Mood history calendar','💬 Anonymous peer support','📋 Detailed wellness reports'] %}
+          <div class="hfl-item">{{ f }}</div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="floating-orbs">
+        <div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div>
+      </div>
+      <div class="wave-shape"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="auth-right">
+    <div class="auth-card">
+      <div class="auth-card-header">
+        <h2 class="auth-title" id="authTitle">Welcome back</h2>
+        <p class="auth-subtitle" id="authSubtitle">Sign in to continue your wellness journey</p>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}{% for cat,msg in messages %}
+        <div class="flash flash-{{ cat }}">{{ msg }}</div>
+        {% endfor %}{% endif %}
+      {% endwith %}
+
+      <form method="POST" action="/login" id="authForm">
+        <div class="form-group" id="nameGroup" style="display:none">
+          <label class="form-label">Full Name</label>
+          <div class="input-wrapper">
+            <span class="input-icon">👤</span>
+            <input type="text" name="name" class="form-input" placeholder="Alex Johnson">
+          </div>
+        </div>
+        <div class="form-group" id="courseGroup" style="display:none">
+          <label class="form-label">Course / Degree <span style="color:var(--text-light);font-weight:400">(optional)</span></label>
+          <div class="input-wrapper">
+            <span class="input-icon">📚</span>
+            <input type="text" name="course" class="form-input" placeholder="e.g. B.Tech Computer Science">
+          </div>
+        </div>
+        <div class="form-group" id="uniGroup" style="display:none">
+          <label class="form-label">University / College <span style="color:var(--text-light);font-weight:400">(optional)</span></label>
+          <div class="input-wrapper">
+            <span class="input-icon">🏛️</span>
+            <input type="text" name="university" class="form-input" placeholder="e.g. IIT Bombay">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <div class="input-wrapper">
+            <span class="input-icon">✉️</span>
+            <input type="email" name="email" class="form-input" placeholder="you@example.com" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="input-wrapper">
+            <span class="input-icon">🔒</span>
+            <input type="password" name="password" class="form-input" placeholder="••••••••" required>
+          </div>
+        </div>
+        <input type="hidden" name="action" id="authAction" value="login">
+        <button type="submit" class="btn-primary" id="submitBtn">
+          <span>Sign In</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </form>
+
+      <div class="auth-switch">
+        <span id="switchText">Don't have an account?</span>
+        <button class="btn-link" onclick="toggleMode()">Create one</button>
+      </div>
+      <div class="auth-footer">🔐 Your data is private and never shared with third parties</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let isSignup = false;
+function toggleMode() {
+  isSignup = !isSignup;
+  const show = (id, v) => document.getElementById(id).style.display = v ? 'block' : 'none';
+  show('nameGroup',   isSignup); show('courseGroup', isSignup); show('uniGroup', isSignup);
+  document.getElementById('authTitle').textContent    = isSignup ? 'Create account' : 'Welcome back';
+  document.getElementById('authSubtitle').textContent = isSignup ? 'Start your wellness journey' : 'Sign in to continue your wellness journey';
+  document.getElementById('authAction').value         = isSignup ? 'signup' : 'login';
+  document.getElementById('submitBtn').querySelector('span').textContent = isSignup ? 'Create Account' : 'Sign In';
+  document.getElementById('switchText').textContent   = isSignup ? 'Already have an account?' : "Don't have an account?";
+  document.querySelector('.btn-link').textContent     = isSignup ? 'Sign in' : 'Create one';
+}
+</script>
+{% endblock %}

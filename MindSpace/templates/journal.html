@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}MindSpace — Journal{% endblock %}
+{% block body %}
+{% set active = 'journal' %}
+{% include '_navbar.html' %}
+<div class="page-root">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">📓 My Journal</h1>
+      <p class="page-sub">Private reflections, thoughts, and feelings — yours alone.</p>
+    </div>
+    <a href="/journal/new" class="btn-add">+ New Entry</a>
+  </div>
+
+  <!-- Stats strip -->
+  <div class="journal-stats">
+    <div class="jstat"><span class="jstat-n">{{ entries|length }}</span><span class="jstat-l">Entries</span></div>
+    <div class="jstat"><span class="jstat-n">{{ total_words }}</span><span class="jstat-l">Words Written</span></div>
+    {% for mood, count in mood_counts.items() %}
+    <div class="jstat"><span class="jstat-n">{{ count }}</span><span class="jstat-l">{{ mood|title }} entries</span></div>
+    {% endfor %}
+  </div>
+
+  {% if not entries %}
+  <div class="empty-state">
+    <div class="empty-icon">📓</div>
+    <h2>Your journal is waiting</h2>
+    <p>Writing about your thoughts and feelings is one of the most effective wellbeing practices.</p>
+    <a href="/journal/new" class="btn-primary" style="display:inline-flex;width:auto;padding:12px 28px;text-decoration:none;margin-top:8px;">Write Your First Entry</a>
+  </div>
+  {% else %}
+  <div class="journal-grid">
+    {% for e in entries %}
+    <a href="/journal/{{ e['id'] }}" class="journal-card mood-{{ e['mood_tag'] }}">
+      <div class="jc-top">
+        <span class="jc-mood-dot"></span>
+        <span class="jc-date">{{ e['created_at'][:10] }}</span>
+        <span class="jc-wc">{{ e['word_count'] }} words</span>
+      </div>
+      <h3 class="jc-title">{{ e['title'] }}</h3>
+      <p class="jc-preview">{{ e['content'][:120] }}{% if e['content']|length > 120 %}…{% endif %}</p>
+      <div class="jc-footer">
+        <span class="jc-tag">{{ e['mood_tag']|title }}</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

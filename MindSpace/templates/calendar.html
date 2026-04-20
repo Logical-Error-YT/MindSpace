@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}MindSpace — Calendar{% endblock %}
+{% block body %}
+{% set active = 'calendar' %}
+{% include '_navbar.html' %}
+<div class="page-root">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">📅 Mood History Calendar</h1>
+      <p class="page-sub">Your daily emotional landscape — visualised over time.</p>
+    </div>
+    <div class="cal-legend">
+      <span class="leg-item"><span class="leg-dot" style="background:#10B981"></span>Great</span>
+      <span class="leg-item"><span class="leg-dot" style="background:#7C6EFA"></span>Good</span>
+      <span class="leg-item"><span class="leg-dot" style="background:#F59E0B"></span>Okay</span>
+      <span class="leg-item"><span class="leg-dot" style="background:#F97316"></span>Low</span>
+      <span class="leg-item"><span class="leg-dot" style="background:#EF4444"></span>Hard</span>
+    </div>
+  </div>
+
+  <div class="cal-nav">
+    <button class="cal-nav-btn" id="prevMonth">←</button>
+    <h2 class="cal-month-title" id="calMonthTitle"></h2>
+    <button class="cal-nav-btn" id="nextMonth">→</button>
+  </div>
+
+  <div class="cal-grid-header">
+    {% for d in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] %}
+    <div class="cal-dow">{{ d }}</div>
+    {% endfor %}
+  </div>
+  <div class="cal-grid" id="calGrid"></div>
+
+  <div class="cal-tooltip" id="calTooltip" style="display:none"></div>
+</div>
+
+<script>
+const CAL_DATA = {{ cal_json | safe }};
+const MOOD_COLORS = { 5:'#10B981', 4:'#7C6EFA', 3:'#F59E0B', 2:'#F97316', 1:'#EF4444' };
+
+let currentDate = new Date();
+
+function renderCalendar(year, month) {
+  document.getElementById('calMonthTitle').textContent =
+    new Date(year, month).toLocaleString('default', {month:'long', year:'numeric'});
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  for (let i=0; i<firstDay; i++) { const b=document.createElement('div'); b.className='cal-cell cal-empty'; grid.appendChild(b); }
+  for (let d=1; d<=daysInMonth; d++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const entry = CAL_DATA[dateStr];
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell';
+    cell.innerHTML = `<span class="cal-day-num">${d}</span>`;
+    if (entry) {
+      const color = MOOD_COLORS[entry.mood] || '#9CA3AF';
+      const dot = document.createElement('div');
+      dot.className = 'cal-mood-dot';
+      dot.style.background = color;
+      cell.appendChild(dot);
+      cell.classList.add('cal-has-data');
+      cell.title = `Mood: ${entry.mood}/5 | Stress: ${entry.stress}/5 | Sleep: ${entry.sleep}/5`;
+      cell.addEventListener('mouseenter', (e) => showTooltip(e, entry, dateStr));
+      cell.addEventListener('mouseleave', () => document.getElementById('calTooltip').style.display='none');
+    }
+    const today = new Date(); today.setHours(0,0,0,0);
+    const cellDate = new Date(year, month, d);
+    if (cellDate.getTime() === today.getTime()) cell.classList.add('cal-today');
+    grid.appendChild(cell);
+  }
+}
+
+function showTooltip(e, entry, dateStr) {
+  const t = document.getElementById('calTooltip');
+  t.innerHTML = `<strong>${dateStr}</strong><br>😊 Mood: ${entry.mood}/5<br>⚡ Stress: ${entry.stress}/5<br>😴 Sleep: ${entry.sleep}/5`;
+  t.style.display = 'block';
+  const r = e.target.getBoundingClientRect();
+  t.style.left = (r.left + window.scrollX) + 'px';
+  t.style.top  = (r.bottom + window.scrollY + 6) + 'px';
+}
+
+document.getElementById('prevMonth').onclick = () => { currentDate.setMonth(currentDate.getMonth()-1); renderCalendar(currentDate.getFullYear(), currentDate.getMonth()); };
+document.getElementById('nextMonth').onclick = () => { currentDate.setMonth(currentDate.getMonth()+1); renderCalendar(currentDate.getFullYear(), currentDate.getMonth()); };
+
+renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+</script>
+{% endblock %}

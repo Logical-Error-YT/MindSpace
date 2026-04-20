@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}MindSpace — {{ entry.title }}{% endblock %}
+{% block body %}
+{% set active = 'journal' %}
+{% include '_navbar.html' %}
+<div class="page-root" style="max-width:780px">
+  <div class="page-header">
+    <a href="/journal" class="btn-secondary">← Journal</a>
+    <form method="POST" action="/journal/{{ entry.id }}/delete" onsubmit="return confirm('Delete this entry?')">
+      <button type="submit" class="btn-danger">Delete</button>
+    </form>
+  </div>
+  <div class="entry-card">
+    <div class="entry-meta">
+      <span class="entry-date">{{ entry.created_at[:10] }}</span>
+      <span class="entry-mood mood-{{ entry.mood_tag }}">{{ entry.mood_tag|title }}</span>
+      <span class="entry-wc">{{ entry.word_count }} words</span>
+    </div>
+    <h1 class="entry-title">{{ entry.title }}</h1>
+    {% if tags %}
+    <div class="entry-tags">{% for t in tags %}<span class="etag">{{ t }}</span>{% endfor %}</div>
+    {% endif %}
+    <div class="entry-body">{{ entry.content | replace('\n', '<br>') | safe }}</div>
+  </div>
+</div>
+{% endblock %}

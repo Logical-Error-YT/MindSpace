@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}MindSpace — New Entry{% endblock %}
+{% block body %}
+{% set active = 'journal' %}
+{% include '_navbar.html' %}
+<div class="page-root">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">✍️ New Journal Entry</h1>
+      <p class="page-sub">This is your safe space. Write freely and honestly.</p>
+    </div>
+    <a href="/journal" class="btn-secondary">← Back</a>
+  </div>
+
+  <div class="journal-editor-wrap">
+    <form method="POST" action="/journal/new" id="journalForm">
+      <div class="je-field">
+        <input type="text" name="title" class="je-title-input" placeholder="Give your entry a title…" maxlength="120">
+      </div>
+
+      <div class="je-mood-row">
+        <span class="je-label">How are you feeling?</span>
+        <div class="mood-selector">
+          {% for m in [('great','😊'),('good','🙂'),('neutral','😐'),('low','😔'),('anxious','😰'),('angry','😤')] %}
+          <label class="mood-opt">
+            <input type="radio" name="mood_tag" value="{{ m[0] }}" {% if m[0]=='neutral' %}checked{% endif %}>
+            <span class="mood-emoji" title="{{ m[0]|title }}">{{ m[1] }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="je-field">
+        <textarea name="content" class="je-textarea" placeholder="What's on your mind today? There's no right or wrong way to journal. Just write…" rows="14" id="journalContent"></textarea>
+        <div class="je-word-count"><span id="wordCount">0</span> words</div>
+      </div>
+
+      <div class="je-field">
+        <input type="text" name="tags" class="je-tags-input" placeholder="Tags: comma separated (e.g. exams, friendship, sleep)">
+      </div>
+
+      <div class="je-actions">
+        <button type="submit" class="btn-primary" style="width:auto;padding:13px 36px">Save Entry</button>
+        <a href="/journal" class="btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Writing prompts -->
+  <div class="prompts-box">
+    <h3 class="prompts-title">💡 Writing Prompts</h3>
+    <div class="prompts-grid" id="promptsGrid">
+      {% for p in [
+        "What's one thing that made today different from yesterday?",
+        "Describe a moment this week when you felt at peace.",
+        "What's something you're worried about, and what's the realistic outcome?",
+        "Who made you feel supported recently? Why did that matter?",
+        "What would you tell a close friend going through what you're experiencing?",
+        "What's one small win you haven't given yourself credit for?",
+        "Describe your ideal day. What elements can you add to real life?",
+        "What emotion have you been avoiding? What's underneath it?"
+      ] %}
+      <button class="prompt-btn" onclick="usePrompt(this)" data-prompt="{{ p }}">{{ p }}</button>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+<script>
+const ta = document.getElementById('journalContent');
+ta.addEventListener('input', () => {
+  const words = ta.value.trim() ? ta.value.trim().split(/\s+/).length : 0;
+  document.getElementById('wordCount').textContent = words;
+});
+function usePrompt(btn) {
+  const prompt = btn.dataset.prompt;
+  if (ta.value && !ta.value.endsWith('\n\n')) ta.value += '\n\n';
+  ta.value += prompt + '\n';
+  ta.focus(); ta.dispatchEvent(new Event('input'));
+}
+</script>
+{% endblock %}

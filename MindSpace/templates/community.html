@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}MindSpace — Community{% endblock %}
+{% block body %}
+{% set active = 'community' %}
+{% include '_navbar.html' %}
+<div class="page-root">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">💬 Peer Support Community</h1>
+      <p class="page-sub">A safe, anonymous space to share experiences with fellow students.</p>
+    </div>
+  </div>
+
+  <!-- Post composer -->
+  <div class="composer-card">
+    <form method="POST" action="/community/post">
+      <textarea name="content" class="composer-input" placeholder="Share what's on your mind. You're not alone 💙" maxlength="500" rows="3" required></textarea>
+      <div class="composer-footer">
+        <div class="composer-opts">
+          <select name="category" class="form-input" style="width:auto;padding:8px 12px;font-size:.85rem">
+            {% for c in ['General','Stress','Anxiety','Exams','Relationships','Sleep','Motivation','Win'] %}
+            <option>{{ c }}</option>{% endfor %}
+          </select>
+          <label class="anon-toggle">
+            <input type="checkbox" name="anonymous" checked>
+            <span>Post anonymously</span>
+          </label>
+        </div>
+        <button type="submit" class="btn-post">Share →</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Category filter -->
+  <div class="cat-filter">
+    {% for cat in categories %}
+    <a href="/community?cat={{ cat }}" class="cat-chip {% if current_cat==cat %}cat-chip-active{% endif %}">{{ cat }}</a>
+    {% endfor %}
+  </div>
+
+  <!-- Disclaimer -->
+  <div class="community-notice">
+    🔒 This is a peer support space — not a substitute for professional help. Posts are moderated. Be kind and supportive.
+  </div>
+
+  <!-- Posts -->
+  <div class="posts-feed">
+    {% if not posts %}
+    <div class="empty-state"><p>No posts yet in this category. Be the first to share!</p></div>
+    {% else %}
+    {% for p in posts %}
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-avatar" style="background:{% if p.is_anonymous %}#9CA3AF{% else %}var(--primary){% endif %}">
+          {{ '?' if p.is_anonymous else p.name[0].upper() }}
+        </div>
+        <div class="post-meta">
+          <span class="post-author">{% if p.is_anonymous %}Anonymous Student{% else %}{{ p.name }}{% endif %}</span>
+          <span class="post-time">{{ p.created_at[:10] }}</span>
+        </div>
+        <span class="post-cat-badge">{{ p.category }}</span>
+      </div>
+      <p class="post-content">{{ p.content }}</p>
+      <div class="post-actions">
+        <button class="like-btn {% if p.id in liked_ids %}liked{% endif %}" onclick="likePost({{ p.id }}, this)">
+          <span class="like-icon">{% if p.id in liked_ids %}❤️{% else %}🤍{% endif %}</span>
+          <span class="like-count" id="likes-{{ p.id }}">{{ p.likes }}</span>
+        </button>
+        <span class="post-support">💙 Supporting you</span>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+</div>
+
+<script>
+async function likePost(id, btn) {
+  const fd = new FormData();
+  const res  = await fetch(`/community/like/${id}`, {method:'POST', body:fd});
+  const data = await res.json();
+  document.getElementById('likes-'+id).textContent = data.likes;
+  btn.classList.toggle('liked');
+  btn.querySelector('.like-icon').textContent = btn.classList.contains('liked') ? '❤️' : '🤍';
+}
+</script>
+{% endblock %}

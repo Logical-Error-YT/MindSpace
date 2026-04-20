@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}MindSpace — Goals{% endblock %}
+{% block body %}
+{% set active = 'goals' %}
+{% include '_navbar.html' %}
+<div class="page-root">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">🎯 My Goals</h1>
+      <p class="page-sub">Set intentions, build streaks, and celebrate progress — one day at a time.</p>
+    </div>
+    <button class="btn-add" onclick="toggleModal('addGoalModal')">+ New Goal</button>
+  </div>
+
+  <!-- Quick templates -->
+  <div class="goal-templates-wrap">
+    <h3 class="section-mini-title">⚡ Quick Add</h3>
+    <div class="templates-row">
+      {% for t in templates %}
+      <form method="POST" action="/goals/add" class="tpl-form">
+        <input type="hidden" name="title" value="{{ t.title }}">
+        <input type="hidden" name="category" value="{{ t.category }}">
+        <input type="hidden" name="icon" value="{{ t.icon }}">
+        <input type="hidden" name="target_days" value="{{ t.target_days }}">
+        <button type="submit" class="tpl-chip">{{ t.icon }} {{ t.title }}</button>
+      </form>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Active Goals -->
+  <div class="goals-section">
+    <h3 class="section-mini-title">Active Goals</h3>
+    {% set active_goals = goals | selectattr('status','eq','active') | list %}
+    {% if not active_goals %}
+    <div class="empty-state" style="padding:40px">
+      <p>No active goals yet. Add one above to get started!</p>
+    </div>
+    {% else %}
+    <div class="goals-grid">
+      {% for g in active_goals %}
+      {% set progress = [[g.done_count / g.target_days * 100, 100]|min, 0]|max %}
+      <div class="goal-card">
+        <div class="gc-top">
+          <span class="gc-icon">{{ g.icon }}</span>
+          <div class="gc-info">
+            <h4 class="gc-title">{{ g.title }}</h4>
+            <span class="gc-cat">{{ g.category }}</span>
+          </div>
+          <form method="POST" action="/goals/{{ g.id }}/delete" style="margin:0">
+            <button type="submit" class="gc-del" title="Delete">×</button>
+          </form>
+        </div>
+        <div class="gc-progress">
+          <div class="gc-track">
+            <div class="gc-fill" style="width:{{ progress|int }}%"></div>
+          </div>
+          <span class="gc-pct">{{ g.done_count }}/{{ g.target_days }} days</span>
+        </div>
+        <div class="gc-footer">
+          <span class="gc-deadline">Ends {{ g.end_date }}</span>
+          {% if g.id in today_checkins %}
+          <span class="gc-done-today">✓ Done today</span>
+          {% else %}
+          <form method="POST" action="/goals/{{ g.id }}/checkin" style="margin:0">
+            <button type="submit" class="btn-checkin-goal">Check In ✓</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Completed -->
+  {% set done_goals = goals | selectattr('status','eq','completed') | list %}
+  {% if done_goals %}
+  <div class="goals-section">
+    <h3 class="section-mini-title" style="color:var(--secondary)">✅ Completed Goals</h3>
+    <div class="goals-grid">
+      {% for g in done_goals %}
+      <div class="goal-card goal-done">
+        <div class="gc-top">
+          <span class="gc-icon">{{ g.icon }}</span>
+          <div class="gc-info"><h4 class="gc-title">{{ g.title }}</h4><span class="gc-cat">{{ g.category }}</span></div>
+        </div>
+        <p class="gc-completed-label">🎉 {{ g.done_count }} days completed</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Add Goal Modal -->
+<div class="modal-overlay" id="addGoalModal" style="display:none" onclick="if(event.target===this)toggleModal('addGoalModal')">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>Create New Goal</h3>
+      <button onclick="toggleModal('addGoalModal')" class="modal-close">×</button>
+    </div>
+    <form method="POST" action="/goals/add">
+      <div class="form-group">
+        <label class="form-label">Goal Title</label>
+        <input type="text" name="title" class="form-input" placeholder="e.g. Read for 20 minutes daily" required>
+      </div>
+      <div class="modal-row">
+        <div class="form-group" style="flex:1">
+          <label class="form-label">Category</label>
+          <select name="category" class="form-input">
+            {% for c in ['Mental','Physical','Lifestyle','Social','Academic'] %}
+            <option>{{ c }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label">Icon (emoji)</label>
+          <input type="text" name="icon" class="form-input" placeholder="🎯" value="🎯" maxlength="4">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Target Days</label>
+        <input type="number" name="target_days" class="form-input" value="7" min="1" max="90">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description (optional)</label>
+        <textarea name="description" class="form-input" rows="2" placeholder="Why does this goal matter to you?"></textarea>
+      </div>
+      <button type="submit" class="btn-primary" style="width:100%;margin-top:8px">Create Goal</button>
+    </form>
+  </div>
+</div>
+<script>
+function toggleModal(id) {
+  const m = document.getElementById(id);
+  m.style.display = m.style.display === 'none' ? 'flex' : 'none';
+}
+</script>
+{% endblock %}

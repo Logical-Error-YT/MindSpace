@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block title %}MindSpace — Your Report{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block body %}
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <span class="brain-icon-sm">🧠</span>
+      <span class="nav-logo">MindSpace</span>
+    </div>
+    <div class="nav-right">
+      <div class="nav-user">
+        <div class="user-avatar">{{ user_name[0].upper() }}</div>
+        <span class="user-name">{{ user_name }}</span>
+      </div>
+      <a href="/assessment" class="btn-retake">Retake</a>
+      <a href="/logout" class="btn-logout">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign Out
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- CRITICAL ALERT -->
+{% if risk_index == 3 %}
+<div class="critical-banner">
+  <div class="critical-inner">
+    <span class="critical-icon">⚠️</span>
+    <div>
+      <strong>Immediate Attention Required</strong>
+      <p>We strongly recommend consulting a mental health professional or calling a crisis helpline today.</p>
+    </div>
+    <div class="pulse-ring"></div>
+  </div>
+</div>
+{% endif %}
+
+<div class="result-root">
+
+  <!-- HERO SCORE -->
+  <div class="score-hero">
+    <div class="score-hero-left">
+      <h1 class="report-title">Your Mental Health Report</h1>
+      <p class="report-date">Generated just now • Private & Confidential</p>
+      <div class="risk-badge risk-{{ risk_label.lower() }}">{{ risk_label }} Risk</div>
+      <p class="risk-desc">
+        {% if risk_index == 0 %}Your responses suggest a generally healthy mental state. Keep up your positive habits.
+        {% elif risk_index == 1 %}Some areas show mild concern. Consider implementing the recommendations below.
+        {% elif risk_index == 2 %}Several indicators suggest elevated stress. Please review our recommendations.
+        {% else %}Your responses indicate significant distress. Please seek professional support immediately.{% endif %}
+      </p>
+      <a href="/assessment" class="btn-retake-lg">Retake Assessment</a>
+    </div>
+    <div class="score-hero-right">
+      <div class="score-ring-wrap">
+        <svg class="score-ring" viewBox="0 0 200 200">
+          <circle class="ring-bg" cx="100" cy="100" r="80" fill="none" stroke-width="16"/>
+          <circle class="ring-fill" cx="100" cy="100" r="80" fill="none" stroke-width="16"
+            stroke="{{ risk_color }}"
+            stroke-dasharray="{{ (score / 100 * 502.65)|round(1) }} 502.65"
+            stroke-dashoffset="125.66"
+            stroke-linecap="round"/>
+        </svg>
+        <div class="score-center">
+          <span class="score-num">{{ score }}</span>
+          <span class="score-unit">/100</span>
+          <span class="score-sub">Risk Score</span>
+        </div>
+      </div>
+      <div class="prob-bars">
+        {% set plabels = ['Low', 'Moderate', 'High', 'Critical'] %}
+        {% set pcolors = ['#10B981', '#F59E0B', '#F97316', '#EF4444'] %}
+        {% for i in range(4) %}
+        <div class="prob-row">
+          <span class="prob-label">{{ plabels[i] }}</span>
+          <div class="prob-track">
+            <div class="prob-fill" style="width:{{ probabilities[i] }}%; background:{{ pcolors[i] }}"></div>
+          </div>
+          <span class="prob-pct">{{ probabilities[i] }}%</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- CHARTS 2x2 -->
+  <div class="charts-section">
+    <h2 class="section-title">Detailed Analysis</h2>
+    <div class="charts-grid">
+
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <span class="chart-icon">📊</span>
+          <h3>Category Scores</h3>
+        </div>
+        <canvas id="barChart"></canvas>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <span class="chart-icon">📈</span>
+          <h3>Population Distribution</h3>
+        </div>
+        <canvas id="histChart"></canvas>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <span class="chart-icon">🥧</span>
+          <h3>Risk Distribution</h3>
+        </div>
+        <canvas id="pieChart"></canvas>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <span class="chart-icon">🔬</span>
+          <h3>Feature Importance</h3>
+        </div>
+        <canvas id="featChart"></canvas>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RECOMMENDATIONS -->
+  <div class="recs-section">
+    <h2 class="section-title">Personalized Recommendations</h2>
+    <p class="section-sub">Based on your {{ risk_label }} risk profile, here's what we suggest:</p>
+    <div class="recs-grid">
+      {% for rec in recommendations %}
+      <div class="rec-card">
+        <div class="rec-icon">{{ rec.icon }}</div>
+        <h4 class="rec-title">{{ rec.title }}</h4>
+        <p class="rec-desc">{{ rec.desc }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div><!-- /result-root -->
+
+<script>
+const CAT_SCORES = {{ cat_scores | tojson }};
+const FEAT_IMP = {{ feature_imp | tojson }};
+const RISK_DIST = {{ risk_dist | tojson }};
+const HIST_DATA = {{ hist_data | tojson }};
+const USER_SCORE = {{ score }};
+
+const fontFamily = "'DM Sans', sans-serif";
+Chart.defaults.font.family = fontFamily;
+Chart.defaults.color = '#6B7280';
+
+const PALETTE = {
+  purple: '#7C6EFA',
+  teal: '#00BFA6',
+  pink: '#FF6584',
+  amber: '#F59E0B',
+  green: '#10B981',
+  orange: '#F97316',
+  red: '#EF4444',
+};
+
+// 1. Bar Chart - Category Scores
+new Chart(document.getElementById('barChart'), {
+  type: 'bar',
+  data: {
+    labels: Object.keys(CAT_SCORES),
+    datasets: [{
+      label: 'Score (1–5)',
+      data: Object.values(CAT_SCORES),
+      backgroundColor: [PALETTE.purple + 'CC', PALETTE.teal + 'CC', PALETTE.pink + 'CC', PALETTE.amber + 'CC'],
+      borderColor: [PALETTE.purple, PALETTE.teal, PALETTE.pink, PALETTE.amber],
+      borderWidth: 2,
+      borderRadius: 8,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { min: 1, max: 5, grid: { color: '#F3F4F6' }, ticks: { stepSize: 1 } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+// 2. Histogram
+const histLabels = [];
+for (let i = 0; i < HIST_DATA.edges.length - 1; i++) {
+  histLabels.push(((HIST_DATA.edges[i] + HIST_DATA.edges[i+1]) / 2).toFixed(1));
+}
+new Chart(document.getElementById('histChart'), {
+  type: 'bar',
+  data: {
+    labels: histLabels,
+    datasets: [
+      {
+        label: 'Population',
+        data: HIST_DATA.counts,
+        backgroundColor: PALETTE.teal + '66',
+        borderColor: PALETTE.teal,
+        borderWidth: 1.5,
+        borderRadius: 4,
+      },
+      {
+        label: 'Your Score',
+        data: histLabels.map(l => Math.abs(parseFloat(l) - USER_SCORE / 25 - 1) < 0.2 ? Math.max(...HIST_DATA.counts) * 0.9 : null),
+        backgroundColor: PALETTE.pink,
+        borderColor: PALETTE.pink,
+        borderWidth: 2,
+        borderRadius: 4,
+        type: 'bar',
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } },
+    scales: {
+      y: { grid: { color: '#F3F4F6' } },
+      x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } }
+    }
+  }
+});
+
+// 3. Pie Chart - Risk Distribution
+new Chart(document.getElementById('pieChart'), {
+  type: 'doughnut',
+  data: {
+    labels: Object.keys(RISK_DIST),
+    datasets: [{
+      data: Object.values(RISK_DIST),
+      backgroundColor: [PALETTE.green + 'DD', PALETTE.amber + 'DD', PALETTE.orange + 'DD', PALETTE.red + 'DD'],
+      borderColor: ['#fff', '#fff', '#fff', '#fff'],
+      borderWidth: 3,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    cutout: '60%',
+    plugins: {
+      legend: { position: 'bottom', labels: { padding: 16, boxWidth: 14 } }
+    }
+  }
+});
+
+// 4. Feature Importance (horizontal bar)
+new Chart(document.getElementById('featChart'), {
+  type: 'bar',
+  data: {
+    labels: FEAT_IMP.map(f => f[0]),
+    datasets: [{
+      label: 'Importance',
+      data: FEAT_IMP.map(f => parseFloat(f[1].toFixed(4))),
+      backgroundColor: PALETTE.purple + 'AA',
+      borderColor: PALETTE.purple,
+      borderWidth: 2,
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#F3F4F6' } },
+      y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+</script>
+{% endblock %}

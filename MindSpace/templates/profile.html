@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}MindSpace — Profile{% endblock %}
+{% block body %}
+{% set active = 'profile' %}
+{% include '_navbar.html' %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}{% for cat,msg in messages %}
+  <div class="flash flash-{{ cat }}" style="max-width:900px;margin:12px auto 0;padding:10px 20px;border-radius:10px">{{ msg }}</div>
+  {% endfor %}{% endif %}
+{% endwith %}
+
+<div class="page-root" style="max-width:960px">
+  <div class="page-header">
+    <h1 class="page-title">👤 My Profile</h1>
+    <p class="page-sub">Manage your account and track your achievements.</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="db-tabs" style="margin-bottom:24px">
+    <button class="db-tab active" onclick="switchProfileTab('settings',this)">⚙️ Settings</button>
+    <button class="db-tab" onclick="switchProfileTab('badges',this)">🏆 Achievements</button>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div id="ptab-settings">
+    <div class="profile-card">
+      <!-- Avatar preview -->
+      <div class="profile-avatar-section">
+        <div class="profile-big-avatar" id="avatarPreview" style="background:{{ user.avatar_color }}">{{ user_name[0].upper() }}</div>
+        <div class="avatar-color-row">
+          <span class="acs-label">Choose colour</span>
+          <div class="color-swatches">
+            {% for c in ['#7C6EFA','#00BFA6','#FF6584','#F59E0B','#3B82F6','#8B5CF6','#EC4899','#10B981'] %}
+            <button type="button" class="swatch {% if c == user.avatar_color %}swatch-active{% endif %}"
+              style="background:{{ c }}" data-color="{{ c }}" onclick="pickColor('{{ c }}',this)"></button>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <form method="POST" action="/profile" class="profile-form">
+        <input type="hidden" name="avatar_color" id="avatarColorInput" value="{{ user.avatar_color }}">
+        <div class="pf-grid">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" name="name" class="form-input" value="{{ user.name }}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" class="form-input" value="{{ user.email }}" disabled style="opacity:.6;cursor:not-allowed">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Course / Degree</label>
+            <input type="text" name="course" class="form-input" value="{{ user.course or '' }}" placeholder="e.g. B.Tech Computer Science">
+          </div>
+          <div class="form-group">
+            <label class="form-label">University / College</label>
+            <input type="text" name="university" class="form-input" value="{{ user.university or '' }}" placeholder="e.g. IIT Bombay">
+          </div>
+        </div>
+
+        <div class="pf-divider"><span>Change Password (leave blank to keep current)</span></div>
+
+        <div class="pf-grid">
+          <div class="form-group">
+            <label class="form-label">Current Password</label>
+            <input type="password" name="current_password" class="form-input" placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label class="form-label">New Password</label>
+            <input type="password" name="new_password" class="form-input" placeholder="••••••••">
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary" style="width:auto;padding:12px 32px;margin-top:8px">Save Changes</button>
+      </form>
+    </div>
+
+    <!-- Dark mode toggle -->
+    <div class="profile-card" style="margin-top:16px">
+      <div class="pref-row">
+        <div>
+          <strong>🌙 Dark Mode</strong>
+          <p style="font-size:.82rem;color:var(--text-light);margin-top:2px">Toggle between light and dark theme</p>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="darkModeToggle" onchange="toggleDark(this)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="pref-row">
+        <div>
+          <strong>🔔 Daily Reminders</strong>
+          <p style="font-size:.82rem;color:var(--text-light);margin-top:2px">Get nudged to complete your daily check-in</p>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="reminderToggle" checked onchange="savePref('reminders',this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- BADGES TAB -->
+  <div id="ptab-badges" style="display:none">
+    <div class="badges-header">
+      <div class="badges-summary">
+        <span class="bs-num">{{ earned_count }}</span>
+        <span class="bs-label">of {{ badges|length }} badges earned</span>
+      </div>
+      <div class="bs-bar-wrap">
+        <div class="bs-bar"><div class="bs-fill" style="width:{{ (earned_count/badges|length*100)|int }}%"></div></div>
+      </div>
+    </div>
+    <div class="badges-grid">
+      {% for b in badges %}
+      <div class="badge-card {% if not b.earned %}badge-locked{% endif %}">
+        <div class="badge-icon-wrap" style="background:{{ b.color }}18;border-color:{{ b.color }}{% if not b.earned %}44{% else %}{% endif %}">
+          <span class="badge-icon">{% if b.earned %}{{ b.icon }}{% else %}🔒{% endif %}</span>
+        </div>
+        <h4 class="badge-title">{{ b.title }}</h4>
+        <p class="badge-desc">{{ b.desc }}</p>
+        {% if b.earned %}<span class="badge-earned-label" style="color:{{ b.color }}">✓ Earned</span>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div><!-- /page-root -->
+
+<script>
+function switchProfileTab(id, btn) {
+  document.getElementById('ptab-settings').style.display = id==='settings' ? '' : 'none';
+  document.getElementById('ptab-badges').style.display   = id==='badges'   ? '' : 'none';
+  document.querySelectorAll('.db-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function pickColor(c, btn) {
+  document.getElementById('avatarPreview').style.background = c;
+  document.getElementById('avatarColorInput').value = c;
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('swatch-active'));
+  btn.classList.add('swatch-active');
+}
+function toggleDark(cb) {
+  document.body.classList.toggle('dark-mode', cb.checked);
+  localStorage.setItem('mindspace_dark', cb.checked ? '1' : '0');
+}
+function savePref(key, val) { localStorage.setItem('mindspace_'+key, val ? '1' : '0'); }
+
+// Restore prefs on load
+const dark = localStorage.getItem('mindspace_dark') === '1';
+document.getElementById('darkModeToggle').checked = dark;
+if (dark) document.body.classList.add('dark-mode');
+</script>
+{% endblock %}

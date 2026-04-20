@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}MindSpace — Assessment{% endblock %}
+{% block body %}
+{% set active = 'assessment' %}
+{% include '_navbar.html' %}
+
+<!-- DAILY CHECK-IN STRIP -->
+<div class="checkin-strip">
+  <div class="checkin-inner">
+    <div class="checkin-left">
+      <span class="checkin-dot {% if today_log %}dot-done{% else %}dot-pending{% endif %}"></span>
+      <div><span class="checkin-title">Daily Check-In</span><span class="checkin-sub">{% if today_log %}Logged today — update if needed{% else %}Takes under 10 seconds{% endif %}</span></div>
+    </div>
+    <form id="checkinForm" class="checkin-form">
+      {% for field, label in [('mood','😊 Mood'),('stress','⚡ Stress'),('sleep','😴 Sleep'),('energy','⚡ Energy'),('focus','🎯 Focus')] %}
+      <div class="checkin-field">
+        <label class="ci-label">{{ label }}</label>
+        <div class="ci-pills" data-name="{{ field }}">
+          {% for v in range(1,6) %}
+          <button type="button" class="ci-pill {% if today_log and today_log[field] == v %}ci-pill-active{% endif %}" data-val="{{ v }}">{{ v }}</button>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+      <button type="submit" class="btn-checkin" id="checkinBtn">Save</button>
+    </form>
+    <div class="checkin-toast" id="checkinToast"></div>
+  </div>
+</div>
+
+<div class="assessment-root">
+  <div class="assessment-header">
+    <h1 class="assess-title">Mental Health Assessment</h1>
+    <p class="assess-subtitle">Rate each statement honestly — <strong>1 (Never)</strong> to <strong>5 (Always)</strong></p>
+    <div class="progress-bar-wrap"><div class="progress-bar-inner" id="progressBar"></div></div>
+    <span class="progress-label" id="progressLabel">0 / 20 answered</span>
+  </div>
+  <form method="POST" action="/result" id="assessForm">
+    <div class="questions-grid">
+      {% set categories = ['Stress','Anxiety','Mood','Lifestyle'] %}
+      {% set cat_icons = {'Stress':'⚡','Anxiety':'🌀','Mood':'🎭','Lifestyle':'🌿'} %}
+      {% set cat_colors = {'Stress':'cat-stress','Anxiety':'cat-anxiety','Mood':'cat-mood','Lifestyle':'cat-lifestyle'} %}
+      {% set q_counter = [0] %}
+      {% for cat in categories %}
+        <div class="question-column {{ cat_colors[cat] }}">
+          <div class="col-header"><span class="col-icon">{{ cat_icons[cat] }}</span><span class="col-label">{{ cat }}</span></div>
+          {% for q in questions[cat] %}
+            {% set q_num = q_counter[0] + 1 %}
+            {% if q_counter.append(q_counter.pop() + 1) %}{% endif %}
+            <div class="q-card" data-q="{{ q_num }}">
+              <p class="q-text"><span class="q-num">{{ q_num }}</span> {{ q }}</p>
+              <div class="radio-scale">
+                {% for val in range(1,6) %}
+                <label class="scale-label">
+                  <input type="radio" name="q{{ q_num }}" value="{{ val }}" required onchange="updateProgress()">
+                  <span class="scale-btn">{{ val }}</span>
+                </label>
+                {% endfor %}
+              </div>
+              <div class="scale-hints"><span>Never</span><span>Always</span></div>
+            </div>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+    <div class="analyze-wrap">
+      <button type="submit" class="btn-analyze" id="analyzeBtn">
+        <span class="btn-analyze-inner">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+          Analyze My Mental State
+        </span>
+      </button>
+      <p class="analyze-note">All 20 questions must be answered</p>
+    </div>
+  </form>
+</div>
+
+<script>
+function updateProgress() {
+  let answered = 0;
+  for (let i=1; i<=20; i++) { if (document.querySelector(`input[name="q${i}"]:checked`)) answered++; }
+  document.getElementById('progressBar').style.width = (answered/20*100)+'%';
+  document.getElementById('progressLabel').textContent = `${answered} / 20 answered`;
+  for (let i=1; i<=20; i++) {
+    const c = document.querySelector(`.q-card[data-q="${i}"]`);
+    if (c) c.classList.toggle('answered', !!document.querySelector(`input[name="q${i}"]:checked`));
+  }
+}
+document.getElementById('assessForm').addEventListener('submit', function() {
+  const b = document.getElementById('analyzeBtn'); b.classList.add('loading');
+  b.querySelector('.btn-analyze-inner').innerHTML = '<span class="spinner"></span> Analyzing...';
+});
+const ciState = {};
+document.querySelectorAll('.ci-pills').forEach(g => {
+  const name = g.dataset.name;
+  const ap = g.querySelector('.ci-pill-active');
+  if (ap) ciState[name] = parseInt(ap.dataset.val);
+  g.querySelectorAll('.ci-pill').forEach(p => p.addEventListener('click', () => {
+    g.querySelectorAll('.ci-pill').forEach(x => x.classList.remove('ci-pill-active'));
+    p.classList.add('ci-pill-active'); ciState[name] = parseInt(p.dataset.val);
+  }));
+});
+document.getElementById('checkinForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const fields = ['mood','stress','sleep','energy','focus'];
+  if (!fields.every(f => ciState[f])) { showToast('Please select all values.','error'); return; }
+  const btn = document.getElementById('checkinBtn'); btn.disabled=true; btn.textContent='…';
+  const fd = new FormData();
+  fields.forEach(f => fd.append(f, ciState[f]));
+  try {
+    const res = await fetch('/daily_checkin',{method:'POST',body:fd,headers:{'X-Requested-With':'XMLHttpRequest'}});
+    const d = await res.json();
+    showToast(d.message, d.status);
+    document.querySelector('.checkin-dot').className = 'checkin-dot dot-done';
+    document.querySelector('.checkin-sub').textContent = 'Logged today';
+  } catch(e) { showToast('Error. Try again.','error'); }
+  finally { btn.disabled=false; btn.textContent='Save'; }
+});
+function showToast(msg, type) {
+  const t = document.getElementById('checkinToast');
+  t.textContent=msg; t.className='checkin-toast toast-'+type+' toast-show';
+  setTimeout(()=>t.classList.remove('toast-show'),3000);
+}
+</script>
+{% endblock %}

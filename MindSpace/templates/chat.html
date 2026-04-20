@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}MindSpace — Aria AI{% endblock %}
+{% block body %}
+{% set active = 'chat' %}
+{% include '_navbar.html' %}
+<div class="chat-root">
+  <div class="chat-sidebar">
+    <div class="aria-profile">
+      <div class="aria-avatar">🤖</div>
+      <h3 class="aria-name">Aria</h3>
+      <p class="aria-desc">Your AI wellness companion. Here to listen, support, and guide — anytime.</p>
+    </div>
+    <div class="aria-topics">
+      <h4 class="topics-title">Try asking about…</h4>
+      {% for topic in [
+        ('😰','Exam stress and pressure'),
+        ('😴','Sleep troubles'),
+        ('😔','Feeling low or unmotivated'),
+        ('🌬️','Breathing exercises'),
+        ('😟','Anxiety and worry'),
+        ('💪','Building better habits')
+      ] %}
+      <button class="topic-btn" onclick="sendQuick('{{ topic[1] }}')">{{ topic[0] }} {{ topic[1] }}</button>
+      {% endfor %}
+    </div>
+    <button class="btn-clear-chat" onclick="clearChat()">🗑 Clear conversation</button>
+    <p class="aria-disclaimer">Aria is an AI and cannot replace professional mental health support. If you're in crisis, please call a helpline.</p>
+  </div>
+
+  <div class="chat-main">
+    <div class="chat-messages" id="chatMessages">
+      {% if not history %}
+      <div class="chat-welcome">
+        <div class="chat-welcome-icon">💙</div>
+        <h3>Hi, I'm Aria</h3>
+        <p>I'm here to listen and support you through the ups and downs of student life. What's on your mind today?</p>
+      </div>
+      {% else %}
+      {% for msg in history %}
+      <div class="msg msg-{{ msg.role }}">
+        {% if msg.role == 'assistant' %}
+        <div class="msg-avatar-aria">🤖</div>
+        {% endif %}
+        <div class="msg-bubble">{{ msg.content }}</div>
+        {% if msg.role == 'user' %}
+        <div class="msg-avatar-user" style="background:{{ user_color }}">{{ user_name[0].upper() }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% endif %}
+    </div>
+
+    <div class="chat-input-wrap">
+      <div class="chat-input-row" id="chatInputRow">
+        <textarea class="chat-input" id="chatInput" placeholder="Type a message to Aria…" rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"
+          oninput="autoResize(this)"></textarea>
+        <button class="btn-send" onclick="sendMessage()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const chatMessages = document.getElementById('chatMessages');
+chatMessages.scrollTop = chatMessages.scrollHeight;
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  input.style.height = 'auto';
+
+  appendMsg('user', msg);
+
+  const typing = appendMsg('assistant', '…', true);
+  typing.classList.add('typing-indicator');
+
+  try {
+    const res  = await fetch('/chat/send', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: msg})
+    });
+    const data = await res.json();
+    typing.remove();
+    appendMsg('assistant', data.response);
+  } catch(e) {
+    typing.remove();
+    appendMsg('assistant', 'Something went wrong. Please try again 💙');
+  }
+}
+
+function appendMsg(role, content, isTyping=false) {
+  const welcome = chatMessages.querySelector('.chat-welcome');
+  if (welcome) welcome.remove();
+
+  const div = document.createElement('div');
+  div.className = `msg msg-${role}`;
+
+  if (role === 'assistant') {
+    div.innerHTML = `<div class="msg-avatar-aria">🤖</div><div class="msg-bubble">${isTyping ? '<span class="dots"><span>.</span><span>.</span><span>.</span></span>' : content}</div>`;
+  } else {
+    div.innerHTML = `<div class="msg-bubble">${content}</div><div class="msg-avatar-user" style="background:{{ user_color }}">{{ user_name[0].upper() }}</div>`;
+  }
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return div;
+}
+
+function sendQuick(text) { document.getElementById('chatInput').value = text; sendMessage(); }
+
+async function clearChat() {
+  if (!confirm('Clear conversation history?')) return;
+  await fetch('/chat/clear', {method:'POST'});
+  chatMessages.innerHTML = `<div class="chat-welcome"><div class="chat-welcome-icon">💙</div><h3>Hi, I'm Aria</h3><p>What's on your mind?</p></div>`;
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+</script>
+{% endblock %}

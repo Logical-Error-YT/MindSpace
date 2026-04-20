@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}MindSpace — Notifications{% endblock %}
+{% block body %}
+{% set active = 'notifications' %}
+{% include '_navbar.html' %}
+<div class="page-root" style="max-width:720px">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">🔔 Notifications</h1>
+      <p class="page-sub">Your daily reminders and achievement updates.</p>
+    </div>
+  </div>
+
+  <div class="notif-list">
+    {% for n in notifications %}
+    <div class="notif-card notif-{{ n.type }}">
+      <div class="notif-icon-wrap">{{ n.icon }}</div>
+      <div class="notif-body">
+        <h4 class="notif-title">{{ n.title }}</h4>
+        <p class="notif-text">{{ n.text }}</p>
+      </div>
+      <a href="{{ n.link }}" class="notif-cta">{{ n.cta }} →</a>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="notif-tips">
+    <h3 style="font-family:'DM Serif Display',serif;font-size:1.1rem;margin-bottom:14px">💡 Daily Wellness Tips</h3>
+    <div class="tips-grid">
+      {% for tip in [
+        ('🌅','Morning Intention','Spend 2 minutes every morning setting one small, achievable intention for the day.'),
+        ('🚶','Movement Break','Every 90 minutes of studying, take a 5-minute walk. It resets focus and lowers stress.'),
+        ('💧','Stay Hydrated','Dehydration increases cortisol (stress hormone). Keep a water bottle at your desk.'),
+        ('📵','Phone-Free Hour','Try 1 hour without your phone before bed. Sleep quality improves dramatically.'),
+        ('🫁','Breath Check','Pause and take 3 slow, deep breaths before starting any stressful task.'),
+        ('🤝','Reach Out','Send one message to a friend this week. Social connection is the #1 resilience factor.')
+      ] %}
+      <div class="tip-card">
+        <span class="tip-icon">{{ tip[0] }}</span>
+        <h5 class="tip-title">{{ tip[1] }}</h5>
+        <p class="tip-text">{{ tip[2] }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

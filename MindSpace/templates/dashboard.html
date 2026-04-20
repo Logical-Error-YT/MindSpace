@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}MindSpace — Dashboard{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>{% endblock %}
+{% block body %}
+{% set active = 'dashboard' %}
+{% include '_navbar.html' %}
+<div class="db-root">
+  <div class="db-header">
+    <div><h1 class="db-title">Wellness Dashboard</h1><p class="db-sub">Your mental health journey, tracked over time.</p></div>
+    {% if last_assessment %}<div class="db-last-assess"><span class="dla-label">Last Assessment</span><span class="dla-badge risk-{{ last_assessment['risk_level']|lower }}">{{ last_assessment['risk_level'] }}</span><span class="dla-score">{{ last_assessment['score']|round(1) }}/100</span></div>{% endif %}
+  </div>
+  {% if not has_data %}
+  <div class="db-empty"><div class="empty-icon">📊</div><h2>No tracking data yet</h2><p>Complete your first Daily Check-In on the Assessment page.</p><a href="/assessment" class="btn-primary" style="display:inline-flex;width:auto;padding:12px 28px;text-decoration:none;margin-top:8px">Start Daily Check-In</a></div>
+  {% else %}
+  <div class="db-tabs">
+    <button class="db-tab active" onclick="switchTab('weekly',this)">📅 Weekly</button>
+    <button class="db-tab" onclick="switchTab('monthly',this)">📆 Monthly</button>
+    <button class="db-tab" onclick="switchTab('insights',this)">🧠 Insights</button>
+    <button class="db-tab" onclick="switchTab('overview',this)">🌟 Overview</button>
+  </div>
+
+  <!-- WEEKLY -->
+  <div class="db-panel" id="panel-weekly">
+    <div class="stat-row">
+      {% for k,icon,cls in [('mood','😊','sc-mood'),('stress','⚡','sc-stress'),('sleep','😴','sc-sleep'),('energy','⚡','sc-streak'),('focus','🎯','sc-mood')] %}
+      <div class="stat-card"><span class="sc-icon">{{ icon }}</span><div class="sc-body"><span class="sc-val">{{ avgs[k] }}</span><span class="sc-label">Avg {{ k|title }}</span></div><div class="sc-bar"><div class="sc-fill {{ cls }}" style="width:{{ (avgs[k]/5*100)|int }}%"></div></div></div>
+      {% endfor %}
+      <div class="stat-card"><span class="sc-icon">🔥</span><div class="sc-body"><span class="sc-val">{{ streak }}</span><span class="sc-label">Day Streak</span></div><div class="sc-bar"><div class="sc-fill sc-streak" style="width:{{ [streak*10,100]|min }}%"></div></div></div>
+    </div>
+    <div class="db-chart-card db-chart-wide"><div class="chart-card-header"><span class="chart-icon">📈</span><h3>Last 7 Days — Mood, Stress & Sleep</h3></div><canvas id="weeklyChart" height="80"></canvas></div>
+    <div class="db-chart-card db-chart-wide"><div class="chart-card-header"><span class="chart-icon">⚡</span><h3>Energy & Focus Trend</h3></div><canvas id="efChart" height="70"></canvas></div>
+    <div class="mini-cards-row">
+      <div class="mini-card mini-best"><span class="mini-icon">🌟</span><div class="mini-body"><span class="mini-label">Best Day</span><span class="mini-val">{{ best_day['log_date'] }}</span><span class="mini-sub">Mood {{ best_day['mood'] }}/5</span></div></div>
+      <div class="mini-card mini-worst"><span class="mini-icon">🌧</span><div class="mini-body"><span class="mini-label">Most Stressful</span><span class="mini-val">{{ worst_day['log_date'] }}</span><span class="mini-sub">Stress {{ worst_day['stress'] }}/5</span></div></div>
+      <div class="mini-card mini-predict"><span class="mini-icon">🔮</span><div class="mini-body"><span class="mini-label">Forecast</span><span class="mini-sub">{{ prediction['text'] }}</span></div></div>
+    </div>
+  </div>
+
+  <!-- MONTHLY -->
+  <div class="db-panel" id="panel-monthly" style="display:none">
+    <div class="db-chart-card db-chart-wide"><div class="chart-card-header"><span class="chart-icon">📆</span><h3>30-Day Mood Trend</h3></div><canvas id="monthlyMoodChart" height="80"></canvas></div>
+    <div class="db-chart-card db-chart-wide"><div class="chart-card-header"><span class="chart-icon">⚡</span><h3>Stress & Sleep — 30 Days</h3></div><canvas id="monthlyStressChart" height="80"></canvas></div>
+    <div class="monthly-summary">
+      {% for k,label,color in [('mood','Avg Mood','var(--secondary)'),('stress','Avg Stress','var(--accent)'),('sleep','Avg Sleep','var(--primary)')] %}
+      <div class="ms-card"><span class="ms-num">{{ avgs[k] }}</span><span class="ms-label">{{ label }}</span><div class="ms-bar"><div class="ms-fill" style="width:{{ (avgs[k]/5*100)|int }}%;background:{{ color }}"></div></div></div>
+      {% endfor %}
+      <div class="ms-card"><span class="ms-num">{{ total_entries }}</span><span class="ms-label">Days Tracked</span><div class="ms-bar"><div class="ms-fill" style="width:{{ [total_entries/30*100,100]|min|int }}%;background:#F59E0B"></div></div></div>
+    </div>
+  </div>
+
+  <!-- INSIGHTS -->
+  <div class="db-panel" id="panel-insights" style="display:none">
+    <div class="predict-banner predict-{{ prediction['type'] }}"><span class="predict-icon">🔮</span><div><strong>Next Week Forecast</strong><p>{{ prediction['text'] }}</p></div></div>
+    <div class="insights-grid">{% for ins in insights %}<div class="insight-card insight-{{ ins['type'] }}"><span class="insight-icon">{{ ins['icon'] }}</span><p class="insight-text">{{ ins['text'] }}</p></div>{% endfor %}</div>
+    <div class="db-chart-card"><div class="chart-card-header"><span class="chart-icon">🔬</span><h3>Sleep vs Stress Correlation</h3></div><canvas id="correlChart" height="110"></canvas></div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div class="db-panel" id="panel-overview" style="display:none">
+    <div class="overview-cards">
+      <a href="/journal" class="overview-card ov-journal"><span class="ov-icon">📓</span><span class="ov-num">{{ journal_count }}</span><span class="ov-label">Journal Entries</span></a>
+      <a href="/meditation" class="overview-card ov-med"><span class="ov-icon">🧘</span><span class="ov-num">{{ med_count }}</span><span class="ov-label">Meditations Done</span></a>
+      <a href="/goals" class="overview-card ov-goals"><span class="ov-icon">🎯</span><span class="ov-num">{{ active_goals|length }}</span><span class="ov-label">Active Goals</span></a>
+      <a href="/community" class="overview-card ov-comm"><span class="ov-icon">💬</span><span class="ov-num">∞</span><span class="ov-label">Peer Community</span></a>
+    </div>
+    {% if active_goals %}
+    <div class="db-chart-card"><div class="chart-card-header"><span class="chart-icon">🎯</span><h3>Active Goals</h3></div>
+    <div class="goals-overview">{% for g in active_goals %}<div class="go-row"><span class="go-icon">{{ g.icon }}</span><div class="go-info"><span class="go-title">{{ g.title }}</span><div class="go-bar"><div class="go-fill" style="width:{{ [[g.done_count/g.target_days*100,100]|min,0]|max|int }}%"></div></div></div><span class="go-pct">{{ g.done_count }}/{{ g.target_days }}</span></div>{% endfor %}</div></div>
+    {% endif %}
+    <div class="db-chart-card"><div class="chart-card-header"><span class="chart-icon">📊</span><h3>Radar — Current Week Averages</h3></div><canvas id="radarChart" height="120"></canvas></div>
+  </div>
+
+  {% endif %}
+</div>
+
+{% if has_data %}
+<script>
+const WL={{ week_labels|tojson }},WM={{ week_mood|tojson }},WS={{ week_stress|tojson }},WSL={{ week_sleep|tojson }},WE={{ week_energy|tojson }},WF={{ week_focus|tojson }};
+const ML={{ month_labels|tojson }},MM={{ month_mood|tojson }},MS={{ month_stress|tojson }},MSL={{ month_sleep|tojson }};
+Chart.defaults.font.family="'DM Sans',sans-serif"; Chart.defaults.color='#6B7280';
+function g(ctx,c1,c2){const gr=ctx.createLinearGradient(0,0,0,280);gr.addColorStop(0,c1);gr.addColorStop(1,c2);return gr;}
+const wCtx=document.getElementById('weeklyChart').getContext('2d');
+new Chart(wCtx,{type:'line',data:{labels:WL,datasets:[
+  {label:'Mood',data:WM,borderColor:'#00BFA6',backgroundColor:g(wCtx,'rgba(0,191,166,.25)','rgba(0,191,166,0)'),fill:true,tension:.4,pointRadius:5,pointBackgroundColor:'#00BFA6',pointBorderColor:'#fff',pointBorderWidth:2,spanGaps:true},
+  {label:'Stress',data:WS,borderColor:'#FF6584',backgroundColor:g(wCtx,'rgba(255,101,132,.18)','rgba(255,101,132,0)'),fill:true,tension:.4,pointRadius:5,pointBackgroundColor:'#FF6584',pointBorderColor:'#fff',pointBorderWidth:2,spanGaps:true},
+  {label:'Sleep',data:WSL,borderColor:'#7C6EFA',backgroundColor:'transparent',fill:false,tension:.4,pointRadius:4,pointBackgroundColor:'#7C6EFA',borderDash:[6,4],spanGaps:true}
+]},options:{responsive:true,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:16}}},scales:{y:{min:1,max:5,grid:{color:'#F3F4F6'},ticks:{stepSize:1}},x:{grid:{display:false}}},animation:{duration:800,easing:'easeOutQuart'}}});
+const efCtx=document.getElementById('efChart').getContext('2d');
+new Chart(efCtx,{type:'bar',data:{labels:WL,datasets:[
+  {label:'Energy',data:WE,backgroundColor:'rgba(245,158,11,.7)',borderColor:'#F59E0B',borderWidth:1.5,borderRadius:6},
+  {label:'Focus',data:WF,backgroundColor:'rgba(59,130,246,.7)',borderColor:'#3B82F6',borderWidth:1.5,borderRadius:6}
+]},options:{responsive:true,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{y:{min:0,max:5,grid:{color:'#F3F4F6'}},x:{grid:{display:false}}}}});
+const mmCtx=document.getElementById('monthlyMoodChart').getContext('2d');
+new Chart(mmCtx,{type:'line',data:{labels:ML,datasets:[{label:'Mood',data:MM,borderColor:'#7C6EFA',backgroundColor:g(mmCtx,'rgba(124,110,250,.3)','rgba(124,110,250,0)'),fill:true,tension:.35,pointRadius:2,pointBackgroundColor:'#7C6EFA',spanGaps:true}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{min:1,max:5,grid:{color:'#F3F4F6'},ticks:{stepSize:1}},x:{grid:{display:false},ticks:{maxTicksLimit:10}}}}});
+const msCtx=document.getElementById('monthlyStressChart').getContext('2d');
+new Chart(msCtx,{type:'line',data:{labels:ML,datasets:[
+  {label:'Stress',data:MS,borderColor:'#FF6584',backgroundColor:g(msCtx,'rgba(255,101,132,.2)','rgba(255,101,132,0)'),fill:true,tension:.35,pointRadius:2,spanGaps:true},
+  {label:'Sleep',data:MSL,borderColor:'#00BFA6',backgroundColor:'transparent',fill:false,tension:.35,pointRadius:2,borderDash:[5,4],spanGaps:true}
+]},options:{responsive:true,plugins:{legend:{position:'top',labels:{boxWidth:12}}},scales:{y:{min:1,max:5,grid:{color:'#F3F4F6'},ticks:{stepSize:1}},x:{grid:{display:false},ticks:{maxTicksLimit:10}}}}});
+const cd=ML.map((l,i)=>(MSL[i]!==null&&MS[i]!==null)?{x:MSL[i],y:MS[i]}:null).filter(Boolean);
+const cCtx=document.getElementById('correlChart').getContext('2d');
+new Chart(cCtx,{type:'scatter',data:{datasets:[{label:'Sleep vs Stress',data:cd,backgroundColor:'rgba(124,110,250,.55)',pointRadius:7}]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`Sleep:${c.parsed.x} Stress:${c.parsed.y}`}}},scales:{x:{title:{display:true,text:'Sleep Quality (1–5)',color:'#9CA3AF'},min:1,max:5,grid:{color:'#F3F4F6'}},y:{title:{display:true,text:'Stress (1–5)',color:'#9CA3AF'},min:1,max:5,grid:{color:'#F3F4F6'}}}}});
+const rCtx=document.getElementById('radarChart').getContext('2d');
+new Chart(rCtx,{type:'radar',data:{labels:['Mood','Low Stress','Sleep','Energy','Focus'],datasets:[{label:'This Week',data:[{{ avgs.mood }},{{ 6-avgs.stress }},{{ avgs.sleep }},{{ avgs.energy }},{{ avgs.focus }}],backgroundColor:'rgba(124,110,250,.2)',borderColor:'#7C6EFA',pointBackgroundColor:'#7C6EFA',pointRadius:5}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{r:{min:0,max:5,ticks:{stepSize:1,font:{size:10}}}}}});
+function switchTab(id,btn){document.querySelectorAll('.db-panel').forEach(p=>p.style.display='none');document.querySelectorAll('.db-tab').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+id).style.display='block';btn.classList.add('active');}
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}MindSpace — Welcome!{% endblock %}
+{% block body %}
+<div class="onboard-root">
+  <div class="onboard-card">
+    <div class="onboard-step active" id="step-1">
+      <div class="ob-icon">🧠</div>
+      <h1 class="ob-title">Welcome to MindSpace, {{ user_name.split()[0] }}!</h1>
+      <p class="ob-sub">Your personal mental wellness companion, built for student life. Here's a quick tour of what you can do here.</p>
+      <button class="btn-ob-next" onclick="nextStep(1)">Let's Go →</button>
+    </div>
+
+    <div class="onboard-step" id="step-2">
+      <div class="ob-icon">📅</div>
+      <h2 class="ob-title">Daily Check-In</h2>
+      <p class="ob-sub">Every day, log your Mood, Stress, Sleep, Energy and Focus in under 10 seconds. This builds your personal wellness timeline.</p>
+      <div class="ob-features">
+        <div class="ob-feat"><span>⚡</span><span>5 metrics tracked</span></div>
+        <div class="ob-feat"><span>📈</span><span>Weekly & monthly trends</span></div>
+        <div class="ob-feat"><span>🔥</span><span>Daily streaks & badges</span></div>
+      </div>
+      <div class="ob-nav"><button class="btn-ob-back" onclick="prevStep(2)">← Back</button><button class="btn-ob-next" onclick="nextStep(2)">Next →</button></div>
+    </div>
+
+    <div class="onboard-step" id="step-3">
+      <div class="ob-icon">🧠</div>
+      <h2 class="ob-title">AI Assessment</h2>
+      <p class="ob-sub">Take our 20-question assessment to get a full mental health risk analysis across Stress, Anxiety, Mood & Lifestyle — powered by machine learning.</p>
+      <div class="ob-features">
+        <div class="ob-feat"><span>🤖</span><span>ML-powered risk analysis</span></div>
+        <div class="ob-feat"><span>📊</span><span>Detailed charts & insights</span></div>
+        <div class="ob-feat"><span>💊</span><span>Personalised recommendations</span></div>
+      </div>
+      <div class="ob-nav"><button class="btn-ob-back" onclick="prevStep(3)">← Back</button><button class="btn-ob-next" onclick="nextStep(3)">Next →</button></div>
+    </div>
+
+    <div class="onboard-step" id="step-4">
+      <div class="ob-icon">🤖</div>
+      <h2 class="ob-title">Meet Aria — Your AI Companion</h2>
+      <p class="ob-sub">Aria is your 24/7 AI wellness companion. Talk about stress, anxiety, sleep, or anything on your mind. She listens, validates, and guides.</p>
+      <div class="ob-features">
+        <div class="ob-feat"><span>💬</span><span>Always available to chat</span></div>
+        <div class="ob-feat"><span>🧘</span><span>Coping strategies on demand</span></div>
+        <div class="ob-feat"><span>🔒</span><span>Private conversation history</span></div>
+      </div>
+      <div class="ob-nav"><button class="btn-ob-back" onclick="prevStep(4)">← Back</button><button class="btn-ob-next" onclick="nextStep(4)">Next →</button></div>
+    </div>
+
+    <div class="onboard-step" id="step-5">
+      <div class="ob-icon">🌟</div>
+      <h2 class="ob-title">You're all set!</h2>
+      <p class="ob-sub">Your journey to better mental wellness starts now. We recommend beginning with today's Daily Check-In.</p>
+      <div class="ob-features">
+        <div class="ob-feat"><span>📓</span><span>Journal — Private reflections</span></div>
+        <div class="ob-feat"><span>🎯</span><span>Goals — Build healthy habits</span></div>
+        <div class="ob-feat"><span>💬</span><span>Community — You're not alone</span></div>
+      </div>
+      <form method="POST" action="/onboarding" style="margin-top:20px">
+        <button type="submit" class="btn-ob-next" style="width:100%">Start My Journey 🚀</button>
+      </form>
+    </div>
+
+    <!-- Progress dots -->
+    <div class="ob-dots">
+      {% for i in range(1,6) %}<div class="ob-dot {% if i==1 %}ob-dot-active{% endif %}" id="dot-{{ i }}"></div>{% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+let currentStep = 1;
+function nextStep(from) {
+  document.getElementById('step-'+from).classList.remove('active');
+  document.getElementById('dot-'+from).classList.remove('ob-dot-active');
+  currentStep = from+1;
+  document.getElementById('step-'+currentStep).classList.add('active');
+  document.getElementById('dot-'+currentStep).classList.add('ob-dot-active');
+}
+function prevStep(from) {
+  document.getElementById('step-'+from).classList.remove('active');
+  document.getElementById('dot-'+from).classList.remove('ob-dot-active');
+  currentStep = from-1;
+  document.getElementById('step-'+currentStep).classList.add('active');
+  document.getElementById('dot-'+currentStep).classList.add('ob-dot-active');
+}
+</script>
+{% endblock %}

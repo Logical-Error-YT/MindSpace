@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}MindSpace — Report{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block body %}
+{% set active = 'report' %}
+{% include '_navbar.html' %}
+<div class="page-root">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">📋 Wellness Report</h1>
+      <p class="page-sub">Generated on {{ report_date }} • Personal & Confidential</p>
+    </div>
+    <div style="display:flex;gap:10px">
+      <a href="/export/csv" class="btn-secondary">⬇ Export CSV</a>
+      <button onclick="window.print()" class="btn-add">🖨 Print Report</button>
+    </div>
+  </div>
+
+  <!-- Profile Card -->
+  <div class="report-profile">
+    <div class="rp-avatar" style="background:{{ user_color }}">{{ user_name[0].upper() }}</div>
+    <div class="rp-info">
+      <h2 class="rp-name">{{ user_name }}</h2>
+      {% if user.course %}<p class="rp-detail">📚 {{ user.course }}{% if user.university %} · {{ user.university }}{% endif %}</p>{% endif %}
+      <p class="rp-detail">Member since {{ user.created_at[:10] }}</p>
+    </div>
+    <div class="rp-badges">
+      <div class="rp-badge"><span>📝</span><strong>{{ logs|length }}</strong><span>Logs</span></div>
+      <div class="rp-badge"><span>📓</span><strong>{{ j_count }}</strong><span>Journal</span></div>
+      <div class="rp-badge"><span>🎯</span><strong>{{ g_count }}</strong><span>Goals</span></div>
+      <div class="rp-badge"><span>🧘</span><strong>{{ m_count }}</strong><span>Meditations</span></div>
+    </div>
+  </div>
+
+  <!-- Average Metrics -->
+  <div class="report-metrics">
+    <div class="rm-card"><span class="rm-num" style="color:var(--secondary)">{{ avg_mood }}</span><span class="rm-label">Avg Mood</span><span class="rm-sub">out of 5.0</span></div>
+    <div class="rm-card"><span class="rm-num" style="color:var(--accent)">{{ avg_stress }}</span><span class="rm-label">Avg Stress</span><span class="rm-sub">out of 5.0</span></div>
+    <div class="rm-card"><span class="rm-num" style="color:var(--primary)">{{ avg_sleep }}</span><span class="rm-label">Avg Sleep Quality</span><span class="rm-sub">out of 5.0</span></div>
+    {% if assessments %}
+    <div class="rm-card"><span class="rm-num" style="color:var(--primary)">{{ assessments[0].risk_level }}</span><span class="rm-label">Latest Risk Level</span><span class="rm-sub">from full assessment</span></div>
+    {% endif %}
+  </div>
+
+  <!-- Charts -->
+  {% if logs %}
+  <div class="report-chart-wrap">
+    <div class="chart-card" style="margin-bottom:0">
+      <div class="chart-card-header"><span class="chart-icon">📈</span><h3>Mood & Stress Over Time</h3></div>
+      <canvas id="reportChart" height="70"></canvas>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Assessment History -->
+  {% if assessments %}
+  <div class="report-section">
+    <h3 class="report-section-title">🧠 Assessment History</h3>
+    <div class="table-wrap">
+      <table class="report-table">
+        <thead><tr><th>Date</th><th>Risk Level</th><th>Score</th></tr></thead>
+        <tbody>
+          {% for a in assessments[:10] %}
+          <tr>
+            <td>{{ a.created_at[:10] }}</td>
+            <td><span class="risk-badge risk-{{ a.risk_level|lower }}">{{ a.risk_level }}</span></td>
+            <td>{{ a.score | round(1) }} / 100</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Recent Logs -->
+  {% if logs %}
+  <div class="report-section">
+    <h3 class="report-section-title">📅 Recent Daily Logs</h3>
+    <div class="table-wrap">
+      <table class="report-table">
+        <thead><tr><th>Date</th><th>Mood</th><th>Stress</th><th>Sleep</th><th>Note</th></tr></thead>
+        <tbody>
+          {% for l in logs[:15] %}
+          <tr>
+            <td>{{ l.log_date }}</td>
+            <td>{{ l.mood }}/5</td>
+            <td>{{ l.stress }}/5</td>
+            <td>{{ l.sleep }}/5</td>
+            <td style="color:var(--text-light);font-size:.82rem">{{ l.note[:40] if l.note else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% if logs %}
+<script>
+const LOG_DATES  = {{ logs | map(attribute='log_date') | list | tojson }};
+const LOG_MOOD   = {{ logs | map(attribute='mood')     | list | tojson }};
+const LOG_STRESS = {{ logs | map(attribute='stress')   | list | tojson }};
+Chart.defaults.font.family = "'DM Sans',sans-serif";
+const ctx = document.getElementById('reportChart').getContext('2d');
+const g1 = ctx.createLinearGradient(0,0,0,300); g1.addColorStop(0,'rgba(0,191,166,.3)'); g1.addColorStop(1,'rgba(0,191,166,0)');
+const g2 = ctx.createLinearGradient(0,0,0,300); g2.addColorStop(0,'rgba(255,101,132,.2)'); g2.addColorStop(1,'rgba(255,101,132,0)');
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: LOG_DATES.slice().reverse().slice(0,30),
+    datasets: [
+      {label:'Mood',  data:LOG_MOOD.slice().reverse().slice(0,30),  borderColor:'#00BFA6',backgroundColor:g1,fill:true,tension:.4,pointRadius:3,spanGaps:true},
+      {label:'Stress',data:LOG_STRESS.slice().reverse().slice(0,30),borderColor:'#FF6584',backgroundColor:g2,fill:true,tension:.4,pointRadius:3,spanGaps:true}
+    ]
+  },
+  options: {
+    responsive:true,plugins:{legend:{position:'top',labels:{boxWidth:12}}},
+    scales:{y:{min:1,max:5,grid:{color:'#F3F4F6'},ticks:{stepSize:1}},x:{grid:{display:false},ticks:{maxTicksLimit:10}}}
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

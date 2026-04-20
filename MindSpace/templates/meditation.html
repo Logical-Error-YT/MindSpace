@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}MindSpace — Meditate{% endblock %}
+{% block body %}
+{% set active = 'meditation' %}
+{% include '_navbar.html' %}
+<div class="page-root">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">🧘 Meditation & Exercises</h1>
+      <p class="page-sub">Guided breathing, grounding, and relaxation techniques for students.</p>
+    </div>
+    <div class="med-stats-mini">
+      <span>🏆 <strong>{{ total_sessions }}</strong> sessions</span>
+      <span>⏱ <strong>{{ total_mins }}</strong> min total</span>
+    </div>
+  </div>
+
+  <div class="med-grid">
+    {% for m in meditations %}
+    <div class="med-card {% if m.id in completed_ids %}med-done{% endif %}" data-id="{{ m.id }}" data-title="{{ m.title }}" data-steps='{{ m.steps | tojson }}' data-duration="{{ m.duration }}" onclick="openMed(this)">
+      <div class="mc-top" style="border-color:{{ m.color }}20;background:{{ m.color }}0d">
+        <span class="mc-icon">{{ m.icon }}</span>
+        <span class="mc-cat" style="color:{{ m.color }}">{{ m.category }}</span>
+        {% if m.id in completed_ids %}<span class="mc-done-badge">✓</span>{% endif %}
+      </div>
+      <h3 class="mc-title">{{ m.title }}</h3>
+      <p class="mc-desc">{{ m.desc }}</p>
+      <div class="mc-footer">
+        <span class="mc-duration">⏱ {{ m.duration }}</span>
+        <span class="mc-start" style="color:{{ m.color }}">Begin →</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Meditation Player Modal -->
+<div class="modal-overlay" id="medModal" style="display:none" onclick="if(event.target===this)closeMed()">
+  <div class="modal-box med-player">
+    <div class="modal-header">
+      <h3 id="medTitle">Meditation</h3>
+      <button onclick="closeMed()" class="modal-close">×</button>
+    </div>
+    <div class="med-timer-wrap">
+      <div class="med-timer-ring">
+        <svg viewBox="0 0 120 120" class="timer-svg">
+          <circle class="timer-bg" cx="60" cy="60" r="50" fill="none" stroke-width="8"/>
+          <circle class="timer-fill" cx="60" cy="60" r="50" fill="none" stroke-width="8" id="timerRing"
+            stroke-dasharray="314" stroke-dashoffset="314" stroke-linecap="round"/>
+        </svg>
+        <div class="med-timer-center">
+          <span id="timerDisplay">00:00</span>
+          <span id="timerLabel">ready</span>
+        </div>
+      </div>
+    </div>
+    <div class="med-steps-wrap">
+      <h4 style="font-size:.85rem;color:var(--text-light);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Steps</h4>
+      <ol class="med-steps" id="medSteps"></ol>
+    </div>
+    <div class="med-controls">
+      <button class="btn-med-ctrl" id="startBtn" onclick="startTimer()">▶ Start</button>
+      <button class="btn-med-ctrl btn-med-pause" id="pauseBtn" onclick="pauseTimer()" style="display:none">⏸ Pause</button>
+      <button class="btn-med-done" id="doneBtn" onclick="completeMed()" style="display:none">✓ Mark Complete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentMedId = null, totalSecs = 0, elapsed = 0, timerInterval = null;
+
+function openMed(card) {
+  currentMedId = card.dataset.id;
+  const steps = JSON.parse(card.dataset.steps);
+  document.getElementById('medTitle').textContent = card.dataset.title;
+  const dur = card.dataset.duration;
+  totalSecs = parseInt(dur) * 60;
+  elapsed = 0;
+  updateTimerDisplay(0);
+  const ol = document.getElementById('medSteps');
+  ol.innerHTML = steps.map(s => `<li class="med-step">${s}</li>`).join('');
+  document.getElementById('startBtn').style.display = '';
+  document.getElementById('pauseBtn').style.display = 'none';
+  document.getElementById('doneBtn').style.display = 'none';
+  document.getElementById('timerRing').style.strokeDashoffset = 314;
+  document.getElementById('medModal').style.display = 'flex';
+}
+function closeMed() {
+  clearInterval(timerInterval);
+  document.getElementById('medModal').style.display = 'none';
+}
+function startTimer() {
+  document.getElementById('startBtn').style.display = 'none';
+  document.getElementById('pauseBtn').style.display = '';
+  timerInterval = setInterval(() => {
+    elapsed++;
+    updateTimerDisplay(elapsed);
+    const pct = elapsed / totalSecs;
+    const offset = 314 - pct * 314;
+    document.getElementById('timerRing').style.strokeDashoffset = Math.max(0, offset);
+    if (elapsed >= totalSecs) {
+      clearInterval(timerInterval);
+      document.getElementById('pauseBtn').style.display = 'none';
+      document.getElementById('doneBtn').style.display = '';
+      document.getElementById('timerLabel').textContent = 'done!';
+    }
+  }, 1000);
+}
+function pauseTimer() {
+  clearInterval(timerInterval);
+  document.getElementById('pauseBtn').style.display = 'none';
+  document.getElementById('startBtn').textContent = '▶ Resume';
+  document.getElementById('startBtn').style.display = '';
+}
+function updateTimerDisplay(s) {
+  const m = Math.floor(s/60), sec = s%60;
+  document.getElementById('timerDisplay').textContent = `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+async function completeMed() {
+  const fd = new FormData();
+  fd.append('meditation_id', currentMedId);
+  fd.append('duration_seconds', elapsed);
+  fd.append('completed', 1);
+  await fetch('/meditation/log', {method:'POST', body:fd});
+  closeMed();
+  window.location.reload();
+}
+</script>
+{% endblock %}
